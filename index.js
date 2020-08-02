@@ -33,47 +33,58 @@
         this.draw = function() {
             // Render rectangle
             this.context.fillStyle = this.color;
-            // 1) Create a reactangle
-            const rect = new Path2D();
-            rect.rect(this.x, this.y, this.w, this.h)
-            this.context.fill(rect);
+            // 1) Create a object
+            const object = new Path2D();
+            object.arc(this.x + this.w/2, this.y + this.h / 2, this.w / 2, 0, Math.PI * 2, true);
+            // 2) Fill it into canvas context
+            this.context.fill(object);
         }
         this.bind = function(points) {
-            const bindings = points.map(p => {
+            points.forEach(p => {
                 if (this.canBound(p)) {
                     // create path from this point to point p
                     const distance = this.calcDistance(p);
-                    this.context.strokeStyle = 'rgba(230, 230, 230, 0.25)';
-                    this.context.lineWidth = ((1 - distance / minDistance) * maxLineWidth) || 0.1;
+                    const lineWidth = (1 - distance / minDistance) * maxLineWidth;
+                    const alpha = (1 - distance / minDistance) * 0.3;
+                    this.context.lineWidth = lineWidth < 0.4 ? 0.4 : lineWidth;
+                    this.context.strokeStyle = `rgba(230, 230, 230, ${alpha < 0.1 ? 0.1 : alpha})`;
                     // 1) create a binding
                     const binding = new Path2D();
                     binding.moveTo(this.x + this.w/2, this.y + this.h/2);
                     binding.lineTo(p.x + p.w/2, p.y + p.h/2);
-                    return binding;
+                    this.context.stroke(binding);
                 }
-                return null;
-            });
-            // 2) draw into context
-            bindings.forEach(b => {
-                if (b != null) this.context.stroke(b);
             });
         }
     }
+
     
-    Point.randomPoint = function(context) {
-        const x = Math.floor(Math.random() * (canvas.clientWidth - particleSize) );
-        const y = Math.floor(Math.random() * (canvas.clientHeight - particleSize) );
-        const dx = Math.random() - 0.5 > 0 ? Math.random() * 0.5 + 0.1 : -(Math.random() * 0.5 + 0.1);
-        const dy = Math.random() - 0.5 > 0 ? Math.random() * 0.5 + 0.1 : -(Math.random() * 0.5 + 0.1)
-        return new Point(context, x, y, dx, dy);
+    
+    function generatePoint(fastRate = 0.6) {
+        let fast = 0;
+        return function(context, numberOfInstances) {
+            let x = Math.floor(Math.random() * (canvas.clientWidth - particleSize) );
+            let y = Math.floor(Math.random() * (canvas.clientHeight - particleSize) );
+            let dx = Math.random() - 0.5 > 0 ? Math.random() * 0.5 + 0.1 : -(Math.random() * 0.5 + 0.1);
+            let dy = Math.random() - 0.5 > 0 ? Math.random() * 0.5 + 0.1 : -(Math.random() * 0.5 + 0.1);
+            if (fast < fastRate * numberOfInstances && (Math.abs(dx) < 0.5 || Math.abs(dx) < 0.5)) {
+                Math.random() - 0.5 > 0 
+                ? dx = Math.sign(dx) * Math.random() * 0.2 + 2 
+                : dy = Math.sign(dx) * Math.random() * 0.2 + 2;
+                fast++;
+            }
+            return new Point(context, x, y, dx, dy);
+        }
     }
+
+    Point.randomPoint = generatePoint();
     
     function init(context) {
         const numberOfPoints = 20;
         const points = [];
         for (let i = 0; i < numberOfPoints; i++) {
     
-            const point = Point.randomPoint(context);
+            const point = Point.randomPoint(context, numberOfPoints);
             points.push(point);
         } 
         window.requestAnimationFrame(draw.bind(null, context, points));
@@ -111,6 +122,7 @@
         // Request for next rendering
         window.requestAnimationFrame(draw.bind(null, context, points));
     }
+    
     
     init(context);
 })();
