@@ -1,11 +1,12 @@
 (function() {
     const canvas = document.querySelector('#canvas');
-    const context = canvas.getContext('2d');
-    const particleSize = 6;
-    const minDistance = 200;
-    const maxLineWidth = 5;
-    
-    function Point(context, x = 0, y = 0, dx = 0.1, dy = 0.1, w = particleSize, h = particleSize, color = '#fff') {
+    const particleSize = 5;
+    const minDistance = 150;
+    const maxLineWidth = 2;
+    const numberOfPoints = 60;
+    let windowSizeChange = false;
+
+    function Point(context, x = 0, y = 0, dx = 0.1, dy = 0.1, w = particleSize, h = particleSize, color = 'rgb(230, 230, 230)') {
         this.context = context;
         this.x = x;
         this.y = y;
@@ -27,8 +28,18 @@
             return true;
         }
         this.handleCollision = function() {
-            if (this.x > canvas.clientWidth - this.w || this.x < 0) this.dx = -this.dx;
-            if (this.y > canvas.clientHeight - this.h || this.y < 0) this.dy = -this.dy;
+            if (this.x > canvas.clientWidth - this.w + 20 || this.x + 20 < 0) this.dx = -this.dx;
+            if (this.y > canvas.clientHeight - this.h + 20 || this.y + 20 < 0) this.dy = -this.dy;
+        }
+        this.preservePosition = function() {
+            if (this.x > canvas.clientWidth - this.w + 20) {
+                this.x = canvas.clientWidth - this.w;
+                this.dx = -this.dx
+            }
+            if (this.y > canvas.clientHeight - this.h + 20) {
+                this.y = canvas.clientHeight - this.h;
+                this.dy = -this.dy;
+            }
         }
         this.draw = function() {
             // Render rectangle
@@ -63,30 +74,40 @@
     function generatePoint(fastRate = 0.6) {
         let fast = 0;
         return function(context, numberOfInstances) {
+            let size = Math.floor(Math.random() * (particleSize - 3)) + particleSize - 2;
             let x = Math.floor(Math.random() * (canvas.clientWidth - particleSize) );
             let y = Math.floor(Math.random() * (canvas.clientHeight - particleSize) );
             let dx = Math.random() - 0.5 > 0 ? Math.random() * 0.5 + 0.1 : -(Math.random() * 0.5 + 0.1);
             let dy = Math.random() - 0.5 > 0 ? Math.random() * 0.5 + 0.1 : -(Math.random() * 0.5 + 0.1);
             if (fast < fastRate * numberOfInstances && (Math.abs(dx) < 0.5 || Math.abs(dx) < 0.5)) {
                 Math.random() - 0.5 > 0 
-                ? dx = Math.sign(dx) * Math.random() * 0.2 + 2 
-                : dy = Math.sign(dx) * Math.random() * 0.2 + 2;
+                ? dx = Math.sign(dx) * Math.random() * 0.2 + 1.5 
+                : dy = Math.sign(dx) * Math.random() * 0.2 + 1.5;
                 fast++;
+                console.log(fast);
             }
-            return new Point(context, x, y, dx, dy);
+            return new Point(context, x, y, dx, dy, size, size);
         }
     }
 
     Point.randomPoint = generatePoint();
     
-    function init(context) {
-        const numberOfPoints = 20;
+    function init() {
+        running = true;
+
+        canvas.width = Math.max(document.documentElement.clientWidth || 0, window.innerWidth || 0);
+        canvas.height = Math.max(document.documentElement.clientHeight || 0, window.innerHeight || 0);
+        const context = canvas.getContext('2d');
+
         const points = [];
         for (let i = 0; i < numberOfPoints; i++) {
     
             const point = Point.randomPoint(context, numberOfPoints);
             points.push(point);
-        } 
+        }
+        window.addEventListener('mousemove', (e) => {
+            
+        });
         window.requestAnimationFrame(draw.bind(null, context, points));
     }
     
@@ -95,8 +116,9 @@
         // Clear canvas
         context.fillStyle = '#fff';
         context.clearRect(0, 0, canvas.clientWidth, canvas.clientHeight);
+        
         // Redraw canvas
-        context.fillStyle = '#000';
+        context.fillStyle = '#b61924';
         context.fill((new Path2D()).rect(0, 0, canvas.clientWidth, canvas.clientHeight));
         
         // Render the points
@@ -118,11 +140,24 @@
         points.forEach(point => {
             point.handleCollision();
         });
+
+        // Handle changin window size
+        if (windowSizeChange) {
+            points.forEach(point => {
+                point.preservePosition();
+            });
+            windowSizeChange = false;
+        }
+        
         
         // Request for next rendering
         window.requestAnimationFrame(draw.bind(null, context, points));
     }
     
-    
-    init(context);
+    window.addEventListener('load', init);
+    window.addEventListener('resize', () => {
+        canvas.width = Math.max(document.documentElement.clientWidth || 0, window.innerWidth || 0);
+        canvas.height = Math.max(document.documentElement.clientHeight || 0, window.innerHeight || 0);
+        windowSizeChange = true;
+    });
 })();
